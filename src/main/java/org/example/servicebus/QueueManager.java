@@ -1,44 +1,36 @@
 package org.example.servicebus;
 
-import com.azure.identity.*;
 import com.azure.messaging.servicebus.*;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 public class QueueManager {
 
-    private static String queueName = "<QUEUE NAME>";
+    static String connectionString = "<NAMESPACE CONNECTION STRING>";
+    static String queueName = "<QUEUE NAME>";
 
-    public static void sendMessage()
+    public static void sendMessage(String message)
     {
-        // create a token using the default Azure credential
-        DefaultAzureCredential credential = new DefaultAzureCredentialBuilder()
-                .build();
-
+        // create a Service Bus Sender client for the queue
         ServiceBusSenderClient senderClient = new ServiceBusClientBuilder()
-                .fullyQualifiedNamespace("NAMESPACENAME.servicebus.windows.net")
-                .credential(credential)
+                .connectionString(connectionString)
                 .sender()
                 .queueName(queueName)
                 .buildClient();
 
         // send one message to the queue
-        senderClient.sendMessage(new ServiceBusMessage("Hello, World!"));
+        senderClient.sendMessage(new ServiceBusMessage(message));
         System.out.println("Sent a single message to the queue: " + queueName);
     }
 
-    public static void sendMessageBatch()
+    public static void sendMessageBatch(List<String> messages)
     {
-        // create a token using the default Azure credential
-        DefaultAzureCredential credential = new DefaultAzureCredentialBuilder()
-                .build();
-
+        // create a Service Bus Sender client for the queue
         ServiceBusSenderClient senderClient = new ServiceBusClientBuilder()
-                .fullyQualifiedNamespace("NAMESPACENAME.servicebus.windows.net")
-                .credential(credential)
+                .connectionString(connectionString)
                 .sender()
                 .queueName(queueName)
                 .buildClient();
@@ -47,7 +39,7 @@ public class QueueManager {
         ServiceBusMessageBatch messageBatch = senderClient.createMessageBatch();
 
         // create a list of messages
-        List<ServiceBusMessage> listOfMessages = createMessages();
+        List<ServiceBusMessage> listOfMessages = createMessages(messages);
 
         // We try to add as many messages as a batch can fit based on the maximum size and send to Service Bus when
         // the batch can hold no more messages. Create a new batch for next set of messages and repeat until all
@@ -83,12 +75,9 @@ public class QueueManager {
     {
         CountDownLatch countdownLatch = new CountDownLatch(1);
 
-        DefaultAzureCredential credential = new DefaultAzureCredentialBuilder()
-                .build();
-
+        // Create an instance of the processor through the ServiceBusClientBuilder
         ServiceBusProcessorClient processorClient = new ServiceBusClientBuilder()
-                .fullyQualifiedNamespace("NAMESPACENAME.servicebus.windows.net")
-                .credential(credential)
+                .connectionString(connectionString)
                 .processor()
                 .queueName(queueName)
                 .processMessage(QueueManager::processMessage)
@@ -103,15 +92,13 @@ public class QueueManager {
         processorClient.close();
     }
 
-    private static List<ServiceBusMessage> createMessages()
+    private static List<ServiceBusMessage> createMessages(List<String> messages)
     {
-        // create a list of messages and return it to the caller
-        ServiceBusMessage[] messages = {
-                new ServiceBusMessage("First message"),
-                new ServiceBusMessage("Second message"),
-                new ServiceBusMessage("Third message")
-        };
-        return Arrays.asList(messages);
+        List<ServiceBusMessage> serviceBusMessages = new ArrayList<ServiceBusMessage>();
+        for (String message: messages) {
+            serviceBusMessages.add(new ServiceBusMessage(message));
+        }
+        return serviceBusMessages;
     }
 
     private static void processMessage(ServiceBusReceivedMessageContext context) {
@@ -153,6 +140,5 @@ public class QueueManager {
                     reason, context.getException());
         }
     }
-
 
 }
